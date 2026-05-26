@@ -1,0 +1,33 @@
+# Python and Backend AI
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+env/
+.venv/
+
+# Machine Learning/AI Models
+*.pt
+*.pth
+*.onnx
+*.weights
+backend_ai/data/
+backend_ai/ai_models/yolov11_scanner/weights/
+backend_ai/ai_models/pnet_recommender/weights/
+*.log
+
+# Flutter and Frontend
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+frontend_app/ios/Pods/
+frontend_app/ios/.symlinks/
+frontend_app/android/key.properties
+frontend_app/android/app/google-services.json
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
