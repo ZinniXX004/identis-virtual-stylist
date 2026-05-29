@@ -4,9 +4,13 @@
 
 **IDENTIS** adalah aplikasi *Virtual Personal Stylist* berbasis kecerdasan buatan (AI) yang dirancang khusus untuk Generasi Z. Aplikasi ini menggabungkan **Ilmu Psikologi Kepribadian (MBTI/Big Five)** dengan **Deep Learning** untuk memecahkan masalah *disonansi identitas*, *decision fatigue*, dan limbah *fast fashion*.
 
-Proyek ini adalah bagian dari Program Kreativitas Mahasiswa bidang Kewirausahaan (PKM-K) 2026.
+Proyek ini adalah bagian dari Project Mata Kuliah Kewirausahaan Berbasis Teknologi (KBT) 2026.
 
-## 🚀 Fitur Utama (Core Value Proposition)
+## 🚀 Status Saat Ini & Panduan Kolaborasi
+*   **Backend dan AI:** Pipeline inferensi AI dan API FastAPI sudah berhasil dibangun dan dapat berjalan di memori GPU secara lokal.
+*   **Frontend Team:** Sudah bisa mulai membangun UI Flutter! Silakan gunakan desain *Mock AI* dan integrasikan HTTP Request mengacu pada dokumen **[api_contract.md](docs/api_contract.md)**. Tidak perlu menunggu model AI asli dilatih secara penuh.
+
+## 💡 Fitur Utama (Core Value Proposition)
 1. **Wardrobe Scanner (YOLOv11):** Digitalisasi lemari otomatis menggunakan Computer Vision.
 2. **Deep Personality Learning (P-Net):** Rekomendasi *Mix and Match* pakaian berdasarkan MBTI pengguna dan kecocokan fisik.
 3. **Fashion Therapy:** Mengurangi kecemasan gaya dan mempromosikan *sustainable fashion* dengan mengoptimalkan pakaian yang sudah dimiliki.
@@ -58,7 +62,7 @@ IDENTIS-Project/
 │   │   │   ├── weights/             # Bobot model YOLOv11 (.pt / .onnx)
 │   │   │   ├── train.py             # Script untuk melatih YOLOv11 mendeteksi baju
 │   │   │   ├── inference.py         # Fungsi deteksi bounding box & crop gambar
-│   │   │   └── utils_color.py       # (Opsional) Ekstraksi palet warna baju
+│   │   │   └── utils_color.py       # Ekstraksi palet warna baju
 │   │   │
 │   │   └── pnet_recommender/        # Modul Deep Personality Learning (Sesuai Paper)
 │   │       ├── modules/             # Blok arsitektur P-Net
@@ -71,7 +75,12 @@ IDENTIS-Project/
 │   │
 │   ├── data/                        # [Masuk .gitignore]
 │   │   ├── raw_images/              # Dataset gambar untuk training YOLO
-│   │   └── mbti_style_mapping.json  # Mapping pakar: MBTI ke Style (cth: INFP -> Fairy)
+│   │   │   ├── images/             
+│   │   │   ├── labels/      
+│   │   │   ├── fashion_dataset_dummy.yaml
+│   │   │   └── fashion_datasets.yaml
+│   │   ├── mbti_style_mapping.json  # Mapping pakar: MBTI ke Style (cth: INFP -> Fairy)
+│   │   └── generate_dummy_yolo.py
 │   │
 │   ├── notebooks/                   # Jupyter Notebook (Untuk Riset, Uji Coba dan Analisa)
 │   │   ├── 01_yolov11_experiments.ipynb
@@ -83,6 +92,7 @@ IDENTIS-Project/
 ├── .gitignore                       # Mengabaikan file bobot model besar, dataset, dan env
 └── README.md                        # Dokumentasi Utama Repository (Overview IDENTIS)
 ```
+*(Catatan: Baca README.md di dalam masing-masing folder frontend_app/ dan backend_ai/ untuk panduan instalasi teknis spesifik).*
 
 ## 🛠️ Tech Stack
 
@@ -99,3 +109,5 @@ IDENTIS-Project/
 3. Abiel Ifan Imanuel Hukom
 4. Jeremia Christ Immanuel Manalu
 5. Rainhard Sintong Valentino Silitonga
+
+---

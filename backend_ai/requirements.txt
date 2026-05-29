@@ -1,0 +1,26 @@
+# Core API
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.7.0
+python-multipart  # Untuk menerima upload gambar dari Flutter
+
+# AI dan Deep Learning
+# Versi terbaru PyTorch yang mendukung Python 3.14 (untuk CPU)
+torch>=2.12.0 
+torchvision>=0.27.0
+# Untuk GPU, pastikan untuk menginstal versi yang sesuai dengan CUDA yang Anda gunakan (misalnya torch==2.3.0+cu132 untuk CUDA 13.2)
+torch==2.12.0+cu132
+torchvision==0.27.0+cu132
+
+# Computer Vision
+ultralytics>=8.2.0  # Ini mencakup YOLOv11
+opencv-python-headless>=4.13.0.92
+Pillow>=10.3.0
+
+# Data dan Notebooks 
+numpy>=2.4.6
+jupyterlab
+tqdm>=4.67.3
+pandas>=3.0.2
+matplotlib>=3.10.8
+seaborn>=0.13.2
