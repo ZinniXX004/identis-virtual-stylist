@@ -2,8 +2,6 @@ import sys
 import os
 import json
 import random
-import hashlib
-from glob import glob
 from PIL import Image
 
 # Tambahkan path root 'backend_ai' ke dalam memori Python
@@ -18,32 +16,40 @@ from tqdm import tqdm
 
 from ai_models.pnet_recommender.recommend import PNetRecommender
 
-# 1. O4U DATASET BUILDER DENGAN DETERMINISTIC STYLE MAPPING
+# 1. O4U DATASET BUILDER (MEMBACA JSON ASLI)
 class O4UMBTIDataset(Dataset):
-    def __init__(self, image_dir, json_mapping_path, max_samples=None):
+    def __init__(self, image_dir, json_file_path):
         """
-        Membaca dataset gambar asli dari folder 'image/' O4U dan mengawinkannya 
-        dengan Expert Knowledge Base MBTI (JSON).
+        Membaca train.json dari O4U dan mengambil gambar utamanya (item_1).
+        Lalu memetakannya ke MBTI berdasarkan Atribut Fisik.
         """
         self.image_dir = image_dir
+        self.valid_data = []
         
-        # Load Knowledge Base (MBTI ke Style)
-        with open(json_mapping_path, 'r') as f:
-            mapping_data = json.load(f)
-        self.mbti_to_style = mapping_data["mbti_to_style"]
-        self.all_mbtis = list(self.mbti_to_style.keys())
-        self.all_styles = list(set(style for styles in self.mbti_to_style.values() for style in styles))
-        
-        # Ambil semua file .jpg di dalam folder image/
-        self.image_paths = glob(os.path.join(image_dir, '*.jpg')) + glob(os.path.join(image_dir, '*.png'))
-        
-        # Batasi jumlah sampel jika kita hanya ingin mengetes sebagian (misal 1000 gambar saja)
-        if max_samples:
-            self.image_paths = self.image_paths[:max_samples]
+        print(f"📖 Membaca file JSON: {json_file_path}...")
+        with open(json_file_path, 'r') as f:
+            raw_data = json.load(f)
             
-        print(f"👕 Berhasil memuat {len(self.image_paths)} gambar pakaian dari O4U.")
+        # Filter data yang valid (memiliki gambar item_1 dan file fisiknya ada)
+        for entry in raw_data:
+            # Kita ambil item_1 (Biasanya Atasan/Dress) sebagai representasi visual outfit untuk MVP
+            img_filename = entry.get("item_1")
+            
+            if img_filename and img_filename != "null":
+                img_path = os.path.join(image_dir, img_filename)
+                
+                # Pastikan file gambar benar-benar ada di harddisk
+                if os.path.exists(img_path):
+                    self.valid_data.append({
+                        "image_path": img_path,
+                        "body_figure": entry.get("body_figure", ""),
+                        "skin_color": entry.get("skin_color", ""),
+                        "height": entry.get("height", "")
+                    })
+                    
+        print(f"✅ Ditemukan {len(self.valid_data)} outfit valid yang siap ditraining.")
 
-        # Transformasi gambar untuk ResNet18 (Wajib 224x224 dan dinormalisasi)
+        # Transformasi gambar untuk ResNet18
         self.transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -51,51 +57,61 @@ class O4UMBTIDataset(Dataset):
         ])
 
     def __len__(self):
-        return len(self.image_paths)
+        return len(self.valid_data)
 
-    def _get_pseudo_style(self, filename):
+    def _map_physical_to_mbti(self, physical_data):
         """
-        Trik MVP: Karena O4U tidak punya label Style (Fairy, Casual, dll), 
-        kita buat Deterministic Hash. Jadi gambar 'A0000001.jpg' akan selalu 
-        diberi label style yang sama setiap kali epoch berjalan. 
-        Ini memastikan AI bisa benar-benar belajar mengenali pola visual!
+        [THE MAGIC BRIDGE]
+        Memetakan Atribut Fisik (O4U) ke MBTI (Sesuai Proposal PKM-K Identis)
         """
-        hash_val = int(hashlib.md5(filename.encode('utf-8')).hexdigest(), 16)
-        style_idx = hash_val % len(self.all_styles)
-        return self.all_styles[style_idx]
+        body = physical_data["body_figure"].lower()
+        skin = physical_data["skin_color"].lower()
+        height = physical_data["height"].lower()
+        
+        # Aturan Pakar (Expert Rule Base)
+        if "athietic" in body or "inverted_triangle" in body:
+            return ["ESTP", "ENTP", "ISTP"] # Sporty / Streetwear
+        elif "hourglass" in body or "fair" in skin:
+            return ["INFP", "INFJ", "ENFJ"] # Elegant / Fairy / Soft
+        elif "high" in height or "rectangle" in body:
+            return ["INTJ", "ESTJ", "ISTJ"] # Formal / Dark Academia / Minimalist
+        elif "spoon" in body or "round" in body:
+            return ["ISFJ", "ESFJ", "ISFP"] # Casual / Modest
+        else:
+            return ["ENFP", "ESFP", "INTP"] # Eclectic / Y2K / Grunge
 
     def __getitem__(self, idx):
-        img_path = self.image_paths[idx]
-        filename = os.path.basename(img_path)
+        data = self.valid_data[idx]
         
-        # Buka Gambar
-        image = Image.open(img_path).convert('RGB')
+        # 1. Load Gambar
+        image = Image.open(data["image_path"]).convert('RGB')
         image_tensor = self.transform(image)
         
-        # Dapatkan Style (Secara pseudo-deterministic)
-        outfit_style = self._get_pseudo_style(filename)
+        # 2. Tentukan MBTI yang cocok berdasarkan ciri fisik di JSON
+        compatible_mbtis = self._map_physical_to_mbti(data)
         
-        # Cari MBTI yang cocok (Positive) dan tidak cocok (Negative) dengan Style baju ini
-        compatible_mbtis = [m for m, styles in self.mbti_to_style.items() if outfit_style in styles]
-        incompatible_mbtis = [m for m in self.all_mbtis if m not in compatible_mbtis]
+        # Daftar semua MBTI
+        all_mbtis = ["INTJ", "INTP", "ENTJ", "ENTP", "INFJ", "INFP", "ENFJ", "ENFP", 
+                     "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"]
         
-        # Fallback aman
-        if not compatible_mbtis: compatible_mbtis = ["INFP"]
-        if not incompatible_mbtis: incompatible_mbtis = ["ESTJ"]
+        incompatible_mbtis = [m for m in all_mbtis if m not in compatible_mbtis]
 
-        # Randomisasi Sampel: 50% Positif (Label 1), 50% Negatif (Label 0)
+        # 3. Positive vs Negative Sampling untuk Training AI
         if random.random() > 0.5:
+            # POSITIVE SAMPLE: Baju ini COCOK untuk MBTI ini
             mbti_target = random.choice(compatible_mbtis)
             label = torch.tensor([1.0], dtype=torch.float32)
         else:
+            # NEGATIVE SAMPLE: Baju ini TIDAK COCOK untuk MBTI ini
             mbti_target = random.choice(incompatible_mbtis)
             label = torch.tensor([0.0], dtype=torch.float32)
             
         return image_tensor, mbti_target, label
 
+
 # 2. FUNGSI TRAINING UTAMA
 def train_pnet():
-    print("🧠 Memulai Training P-Net dengan REAL O4U Dataset...")
+    print("🧠 Memulai Training P-Net dengan REAL JSON O4U Dataset...")
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device yang digunakan: {device}")
@@ -103,35 +119,24 @@ def train_pnet():
     model = PNetRecommender(feature_dim=512).to(device)
     
     # SETUP PATH O4U DATASET
-    # Sesuaikan path ini dengan folder tempat Anda meletakkan ekstrak dataset O4U
     current_dir = os.path.dirname(__file__)
     
-    # PATH KE FOLDER 'image/' O4U
+    # Path ke folder 'image' dan file 'train.json' O4U Anda
     image_dir = os.path.abspath(os.path.join(current_dir, '../../data/raw_images/Outfit4You/image'))
+    json_path = os.path.abspath(os.path.join(current_dir, '../../data/raw_images/Outfit4You/label/train.json'))
     
-    # PATH KE JSON EXPERT KNOWLEDGE KITA
-    json_mapping_path = os.path.abspath(os.path.join(current_dir, '../../data/mbti_style_mapping.json'))
-    
-    if not os.path.exists(json_mapping_path):
-        raise FileNotFoundError(f"JSON Knowledge Base tidak ditemukan di {json_mapping_path}")
-        
-    if not os.path.exists(image_dir):
-        raise FileNotFoundError(f"Folder image O4U tidak ditemukan di {image_dir}")
+    if not os.path.exists(json_path):
+        raise FileNotFoundError(f"File JSON O4U tidak ditemukan di {json_path}")
 
-    # Kita pakai parameter max_samples=5000 agar training tidak memakan waktu berhari-hari untuk MVP
-    dataset = O4UMBTIDataset(image_dir=image_dir, json_mapping_path=json_mapping_path)
+    dataset = O4UMBTIDataset(image_dir=image_dir, json_file_path=json_path)
     
-    if len(dataset) == 0:
-        print("❌ Dataset kosong! Periksa kembali path folder image O4U Anda.")
-        return
-        
     # Batch size 16 aman untuk RTX 4050 (6GB)
     dataloader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=2)
     
     criterion = nn.BCELoss()
     optimizer = optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-2)
     
-    epochs = 5 # Set 5 epoch untuk testing awal
+    epochs = 10 # Kita naikkan jadi 10 karena datanya sekarang nyata dan punya pola
     
     print("\n🚀 Memulai Training Loop...")
     for epoch in range(epochs):
@@ -145,14 +150,9 @@ def train_pnet():
             labels = labels.to(device)
             
             optimizer.zero_grad()
-            
-            # Forward Pass: Prediksi menggunakan P-Net
             predictions = model(images, mbtis[0])
-            
-            # Hitung Loss
             loss = criterion(predictions, labels)
             
-            # Backward Pass
             loss.backward()
             optimizer.step()
             
@@ -165,9 +165,9 @@ def train_pnet():
     # Simpan bobot asli
     save_dir = os.path.join(os.path.dirname(__file__), "weights")
     os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, "pnet_identis_real_v1.pth")
+    save_path = os.path.join(save_dir, "pnet_identis_real_v2.pth")
     torch.save(model.state_dict(), save_path)
-    print(f"\n🎉 Training P-Net dengan O4U Selesai! Bobot disimpan di: {save_path}")
+    print(f"\n🎉 Training P-Net dengan JSON O4U Selesai! Bobot disimpan di: {save_path}")
 
 if __name__ == '__main__':
     train_pnet()

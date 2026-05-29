@@ -71,7 +71,11 @@ IDENTIS-Project/
 │   │       │   └── transformer.py      # Matching MBTI dengan Style Pakaian
 │   │       ├── weights/             # Bobot model P-Net
 │   │       ├── train.py             # Script melatih P-Net (dengan data SOP)
-│   │       └── recommend.py         # Fungsi logika Mix-and-Match
+│   │       ├── recommend.py         # Fungsi logika Mix-and-Match
+│   │       ├── evaluate_metrics.py   
+│   │       ├── plot_1_loss_curve.png          
+│   │       ├── plot_2_roc_curve.png             
+│   │       └── plot_3_confusion_matrix.png         
 │   │
 │   ├── data/                        # [Masuk .gitignore]
 │   │   ├── raw_images/              # Dataset gambar untuk training YOLO
