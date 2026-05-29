@@ -54,11 +54,11 @@ Untuk melihat antarmuka testing API dan struktur JSON Contract, buka [http://127
 
 ## 🏗️ Struktur Folder backend_ai
 
-- api/: Mengatur endpoint HTTP, CORS, dan Skema Pydantic. Model AI di-load ke VRAM GPU melalui fungsi lifespan di main.py.
-- ai_models/yolov11_scanner/: Logika untuk mendeteksi baju dan mengekstrak warna dominan (OpenCV K-Means).
-- ai_models/pnet_recommender/: Arsitektur Deep Learning kustom (ResNet18 + GNN Message Passing + Transformer).
-- data/: Tempat menyimpan dataset mentah dan file konfigurasi YAML (Di-ignore oleh git).
-- notebooks/: File .ipynb untuk riset dan eksperimen tanpa mengganggu core system.
+- `api/`: Mengatur endpoint HTTP, CORS, dan Skema Pydantic. Model AI di-load ke VRAM GPU melalui fungsi lifespan di main.py.
+- `ai_models/yolov11_scanner/`: Logika untuk mendeteksi baju dan mengekstrak warna dominan (OpenCV K-Means).
+- `ai_models/pnet_recommender/`: Arsitektur Deep Learning kustom (ResNet18 + GNN Message Passing + Transformer).
+- `data/`: Tempat menyimpan dataset mentah dan file konfigurasi YAML (Di-ignore oleh git).
+- `notebooks/`: File .ipynb untuk riset dan eksperimen tanpa mengganggu core system.
 
 ## 🔮 Rencana Tindak Lanjut (Next Steps) - Pencarian Dataset Asli
 
