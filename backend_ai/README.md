@@ -49,8 +49,8 @@ pip install -r requirements.txt # Perhatikan juga panduan di file requirements.t
 uvicorn api.main:app --reload
 ```
 
-Server akan berjalan di http://127.0.0.1:8000.
-Untuk melihat antarmuka testing API dan struktur JSON Contract, buka http://127.0.0.1:8000/docs di browser Anda.
+Server akan berjalan di [http://127.0.0.1:8000](http://127.0.0.1:8000).
+Untuk melihat antarmuka testing API dan struktur JSON Contract, buka [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) di browser Anda.
 
 ## 🏗️ Struktur Folder backend_ai
 
@@ -66,7 +66,7 @@ Untuk mengembangkan AI ini menjadi produk siap pakai (production-ready), kita pe
 
 1. Untuk YOLOv11 (Object Detection):
 
-   - Rekomendasi: Cari dataset "Clothes Detection YOLO" di Roboflow Universe.
+   - Rekomendasi: Cari dataset "Clothes Detection YOLO" di **[Roboflow Universe](https://www.google.com/url?sa=E&q=https%3A%2F%2Funiverse.roboflow.com%2F)**.
    - Alternatif: DeepFashion2 Dataset (Membutuhkan konversi label ke format teks YOLO).
    - Target: Melatih YOLO untuk mengenali setidaknya 5 kelas utama: Top, Bottom, Dress, Shoes, dan Bag.
 2. Untuk P-Net (Personality Recommendation):
