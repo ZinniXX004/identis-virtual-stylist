@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
-import 'home_screen.dart'; // Kita akan buat file ini setelah ini
+import 'home_screen.dart';
+import 'catalog_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -12,57 +13,77 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
-  // Daftar layar untuk masing-masing tab
   final List<Widget> _pages = [
-    const HomeScreen(), // Tab 1: Beranda
-    const Center(child: Text("Halaman Lemari (Segera Hadir)", style: TextStyle(fontSize: 18))), // Tab 2: Dummy Lemari
-    const Center(child: Text("Halaman Profil (Segera Hadir)", style: TextStyle(fontSize: 18))), // Tab 3: Dummy Profil
+    const HomeScreen(), // 0: Beranda (Mixer)
+    const Center(child: Text("Lemari", style: TextStyle(fontSize: 20))), // 1: Lemari
+    const CatalogScreen(), // 2: Katalog
+    const Center(child: Text("Profil", style: TextStyle(fontSize: 20))), // 3: Profil
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex], // Menampilkan layar sesuai tab yang diklik
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          backgroundColor: Colors.white,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: AppColors.secondary,
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: "Beranda",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.checkroom_outlined),
-              activeIcon: Icon(Icons.checkroom),
-              label: "Lemari",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: "Profil",
-            ),
-          ],
+      backgroundColor: AppColors.background,
+      body: _pages[_currentIndex],
+      
+      // --- TOMBOL KAMERA MELAYANG ---
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Nanti dihubungkan ke fitur scan pakaian / kamera
+          print("Buka Kamera Pintar AI!");
+        },
+        backgroundColor: AppColors.primary,
+        elevation: 4,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.document_scanner_outlined, color: Colors.white, size: 28),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      
+      // --- BOTTOM NAVIGATION BAR DENGAN LUBANG TENGAH ---
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        color: Colors.white,
+        elevation: 10,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Sisi Kiri
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MaterialButton(
+                    minWidth: 40,
+                    onPressed: () => setState(() => _currentIndex = 0),
+                    child: Icon(Icons.home_filled, color: _currentIndex == 0 ? AppColors.primary : AppColors.secondary),
+                  ),
+                  MaterialButton(
+                    minWidth: 40,
+                    onPressed: () => setState(() => _currentIndex = 1),
+                    child: Icon(Icons.checkroom, color: _currentIndex == 1 ? AppColors.primary : AppColors.secondary),
+                  ),
+                ],
+              ),
+              // Sisi Kanan
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MaterialButton(
+                    minWidth: 40,
+                    onPressed: () => setState(() => _currentIndex = 2),
+                    child: Icon(Icons.storefront, color: _currentIndex == 2 ? AppColors.primary : AppColors.secondary),
+                  ),
+                  MaterialButton(
+                    minWidth: 40,
+                    onPressed: () => setState(() => _currentIndex = 3),
+                    child: Icon(Icons.person, color: _currentIndex == 3 ? AppColors.primary : AppColors.secondary),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
