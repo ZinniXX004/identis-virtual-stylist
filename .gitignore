@@ -1,33 +1,117 @@
-# Python and Backend AI
+# ==================================================
+# OS
+# ==================================================
+
+.DS_Store
+Thumbs.db
+
+# ==================================================
+# IDE
+# ==================================================
+
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# ==================================================
+# Python / Backend AI
+# ==================================================
+
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+
 .env
+.env.*
 venv/
 env/
 .venv/
 
-# Machine Learning/AI Models
+# Logs
+*.log
+
+# ==================================================
+# AI / ML
+# ==================================================
+
 *.pt
 *.pth
 *.onnx
 *.weights
-backend_ai/data/
-backend_ai/ai_models/yolov11_scanner/weights/
-backend_ai/ai_models/pnet_recommender/weights/
-*.log
 
-# Flutter and Frontend
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-build/
+backend_ai/data/
+backend_ai/ai_models/**/weights/
+
+# ==================================================
+# Flutter (identis_app)
+# ==================================================
+
+identis_app/.dart_tool/
+identis_app/.flutter-plugins
+identis_app/.flutter-plugins-dependencies
+identis_app/.packages
+identis_app/.pub/
+
+identis_app/build/
+identis_app/coverage/
+
+identis_app/doc/api/
+
+identis_app/ios/Pods/
+identis_app/ios/.symlinks/
+identis_app/ios/Flutter/.last_build_id
+
+identis_app/android/key.properties
+identis_app/android/app/google-services.json
+
+identis_app/app.*.symbols
+identis_app/app.*.map.json
+
+# ==================================================
+# Flutter (frontend_app)
+# ==================================================
+
+frontend_app/.dart_tool/
+frontend_app/.flutter-plugins
+frontend_app/.flutter-plugins-dependencies
+frontend_app/.packages
+frontend_app/.pub/
+
+frontend_app/build/
+frontend_app/coverage/
+
+frontend_app/doc/api/
+
 frontend_app/ios/Pods/
 frontend_app/ios/.symlinks/
+frontend_app/ios/Flutter/.last_build_id
+
 frontend_app/android/key.properties
 frontend_app/android/app/google-services.json
 
-# OS Generated Files
-.DS_Store
-Thumbs.db
+frontend_app/app.*.symbols
+frontend_app/app.*.map.json
+
+# ==================================================
+# Android build artifacts
+# ==================================================
+
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+
+# ==================================================
+# Misc
+# ==================================================
+
+*.swp
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
