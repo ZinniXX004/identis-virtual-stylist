@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import 'home_screen.dart';
-import 'catalog_screen.dart';
+import '../catalog/catalog_screen.dart';
+import '../wardrobe/wardrobe_screen.dart';
+import '../profile/profile_screen.dart';
+import '../camera/ai_camera_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -15,9 +18,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> _pages = [
     const HomeScreen(), // 0: Beranda (Mixer)
-    const Center(child: Text("Lemari", style: TextStyle(fontSize: 20))), // 1: Lemari
+    const WardrobeScreen(), // 1: Lemari
     const CatalogScreen(), // 2: Katalog
-    const Center(child: Text("Profil", style: TextStyle(fontSize: 20))), // 3: Profil
+    const ProfileScreen(), // 3: Profil
   ];
 
   @override
@@ -29,8 +32,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       // --- TOMBOL KAMERA MELAYANG ---
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Nanti dihubungkan ke fitur scan pakaian / kamera
-          print("Buka Kamera Pintar AI!");
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AiCameraScreen()),
+          );
         },
         backgroundColor: AppColors.primary,
         elevation: 4,
