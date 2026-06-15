@@ -1,6 +1,13 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../core/theme.dart';
+import '../wardrobe/wardrobe_provider.dart';
 
 class AiCameraScreen extends StatefulWidget {
   const AiCameraScreen({super.key});
@@ -13,13 +20,32 @@ class _AiCameraScreenState extends State<AiCameraScreen> {
   bool _hasTakenPhoto = false; // State untuk mengunci hasil foto
   bool _isScanning = false;
   String _detectedItem = "Arahkan kamera...";
+  String _detectedCategory = "-";
+  String _detectedMaterial = "-";
   String _detectedColor = "-";
   double _confidence = 0.0;
+  File? _capturedImage;
 
+  @override
   @override
   void initState() {
     super.initState();
-    // Simulasi otomatis dihapus agar aplikasi menunggu user menjepret foto
+    _openNativeCamera(); // Langsung buka kamera HP
+  }
+
+  Future<void> _openNativeCamera() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile != null) {
+      setState(() {
+        _capturedImage = File(pickedFile.path);
+      });
+      // PANGGIL GEMINI DI SINI!
+      _analyzeImageWithGemini(_capturedImage!); 
+    } else {
+      if (mounted) Navigator.pop(context);
+    }
   }
 
   void _takePhoto() {
@@ -50,18 +76,88 @@ class _AiCameraScreenState extends State<AiCameraScreen> {
     });
   }
 
+  // --- FUNGSI AI GEMINI ASLI ---
+  Future<void> _analyzeImageWithGemini(File imageFile) async {
+    setState(() {
+      _hasTakenPhoto = true;
+      _isScanning = true;
+      _detectedItem = "AI sedang melihat...";
+      _detectedColor = "-";
+    });
+
+    try {
+      // PANGGIL API KEY DARI FILE .ENV
+      final apiKey = dotenv.env['GEMINI_API_KEY'];
+
+      if (apiKey == null || apiKey.isEmpty) {
+        throw Exception("API Key tidak ditemukan di file .env");
+      }
+
+      final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
+
+      // Kita "memaksa" Gemini untuk menjawab dalam format JSON agar mudah dibaca aplikasi
+      final prompt = '''
+        Kamu adalah Fashion AI expert. Analisis pakaian utama dalam gambar ini. 
+        Kembalikan HANYA dalam format JSON MURNI tanpa markdown (tanpa ```json), dengan struktur persis seperti ini:
+        {
+          "nama_pakaian": "contoh: Kemeja Flanel / Kaos / Jaket Bomber",
+          "kategori": "contoh: Topi / Atasan / Bawahan / Outer / Sepatu",
+          "warna": "contoh: Merah Kotak-kotak / Hitam Polos"
+          "bahan": "contoh: Katun / Denim / Rajut / Parasut / Kulit"
+        }
+      ''';
+
+      // Ubah gambar jadi byte agar bisa dikirim
+      final bytes = await imageFile.readAsBytes();
+      final imagePart = DataPart('image/jpeg', bytes);
+
+      // Tembak ke API Gemini
+      final response = await model.generateContent([
+        Content.multi([TextPart(prompt), imagePart])
+      ]);
+
+      // Bersihkan teks balasan Gemini dan ubah jadi JSON
+      final jsonString = response.text?.replaceAll('```json', '').replaceAll('```', '').trim() ?? '{}';
+      final data = jsonDecode(jsonString);
+
+      if (mounted) {
+        setState(() {
+          _detectedItem = data['nama_pakaian'] ?? 'Tidak diketahui';
+          _detectedCategory = data['kategori'] ?? 'Lainnya';
+          _detectedColor = data['warna'] ?? 'Tidak diketahui';
+          _detectedMaterial = data['bahan'] ?? 'Belum diketahui'; // <-- Tangkap bahan
+          _confidence = 0.98; 
+          _isScanning = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _detectedItem = "Gagal dianalisis";
+          _detectedColor = "Error API";
+          _isScanning = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error Gemini: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black, // Background hitam agar mirip viewfinder kamera asli
       body: Stack(
         children: [
-          // 1. SIMULASI VIEWFINDER KAMERA (Menggunakan gambar pakaian asli studio)
+          // 1. VIEWFINDER GAMBAR ASLI DARI KAMERA HP
           Positioned.fill(
-            child: Image.network(
-              "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-              fit: BoxFit.cover,
-            ),
+            child: _capturedImage != null
+                ? Image.file(
+                    _capturedImage!,
+                    fit: BoxFit.cover,
+                  )
+                : const Center(child: CircularProgressIndicator(color: AppColors.primary)),
           ),
 
           // 2. GRADASI GELAP DI ATAS & BAWAH KAMERA (Agar UI minimalis terlihat jelas)
@@ -177,9 +273,11 @@ class _AiCameraScreenState extends State<AiCameraScreen> {
                             style: TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
                           ),
                           const SizedBox(height: 14),
-                          _buildDiagnosticRow("Kategori Objek", _detectedItem),
+                          _buildDiagnosticRow("Objek", "$_detectedItem ($_detectedCategory)"),
                           const SizedBox(height: 8),
                           _buildDiagnosticRow("Ekstraksi Warna", _detectedColor),
+                          const SizedBox(height: 8),
+                          _buildDiagnosticRow("Material/Bahan", _detectedMaterial), // <-- Tampilkan di UI
                           const SizedBox(height: 8),
                           _buildDiagnosticRow(
                             "Tingkat Akurasi", 
@@ -194,14 +292,38 @@ class _AiCameraScreenState extends State<AiCameraScreen> {
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: _isScanning ? null : () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Kemeja Flanel Merah berhasil disimpan ke Lemarimu!"),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+                        onPressed: _isScanning ? null : () async {
+                          if (_capturedImage != null) {
+                            try {
+                              // Tampilkan indikator loading (opsional)
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Menyimpan ke lemari...")),
+                              );
+
+                              // Simpan ke HP dan Firestore!
+                              await Provider.of<WardrobeProvider>(context, listen: false).addCloth(
+                                imageFile: _capturedImage!,
+                                itemName: _detectedItem,
+                                category: _detectedCategory,
+                                colorName: _detectedColor,
+                                material: _detectedMaterial, // <-- Kirim ke Provider
+                              );
+
+                              if (mounted) {
+                                Navigator.pop(context); // Tutup kamera
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Berhasil disimpan ke Lemarimu!"),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Gagal menyimpan: $e"), backgroundColor: Colors.red),
+                              );
+                            }
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,

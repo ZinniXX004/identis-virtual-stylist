@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../home/main_navigation_screen.dart';
+import 'package:provider/provider.dart';
+import '../auth/auth_provider.dart'; // Sesuaikan path jika berbeda
 
 class PhysicalSetupScreen extends StatefulWidget {
-  const PhysicalSetupScreen({super.key});
+  final String mbti;
+  final Map<String, double> bigFive;
+
+  const PhysicalSetupScreen({
+    super.key, 
+    required this.mbti, 
+    required this.bigFive,
+  });
 
   @override
   State<PhysicalSetupScreen> createState() => _PhysicalSetupScreenState();
@@ -35,20 +44,38 @@ class _PhysicalSetupScreenState extends State<PhysicalSetupScreen> {
       isLoading = true;
     });
 
-    // Simulasi loading AI memproses data (1.5 detik)
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
+    try {
+      // Ambil AuthProvider
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      print("Setup Selesai! Bentuk Tubuh: $selectedBodyShape, Undertone: $selectedUndertone");
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
-        (route) => false,
+      // Simpan semua data (Personality + Physical) ke Firestore
+      await authProvider.saveUserProfile(
+        mbti: widget.mbti,
+        bigFive: widget.bigFive,
+        bodyShape: selectedBodyShape!,
+        undertone: selectedUndertone!,
       );
+
+      // Jika berhasil, pindah ke Home
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 

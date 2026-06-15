@@ -38,6 +38,8 @@ identis_app/.flutter-plugins
 identis_app/.flutter-plugins-dependencies
 identis_app/.packages
 identis_app/build/
+identis_app/.env
+identis_app/assets/images/
 
 # Flutter/Dart/Pub related
 **/doc/api/

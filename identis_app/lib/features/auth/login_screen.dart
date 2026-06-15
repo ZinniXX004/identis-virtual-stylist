@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
 import '../setup/personality_setup_screen.dart';
+import 'auth_provider.dart'; // Pastikan path ini sesuai
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,37 +13,104 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // State untuk mengatur mode (Login atau Register)
   bool isLogin = true;
-  // State untuk menyembunyikan/menampilkan password
   bool isPasswordVisible = false;
-  // State untuk efek loading bohongan
-  bool isLoading = false;
 
-  // Fungsi untuk simulasi login/register (Loading 1.5 detik)
-  void _dummyAuthenticate() async {
+  // Controllers untuk mengambil teks dari input
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials(); // Jalankan saat layar pertama kali dibuka
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  // Fungsi untuk memuat email & password yang tersimpan
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      isLoading = true;
+      _emailController.text = prefs.getString('saved_email') ?? '';
+      _passwordController.text = prefs.getString('saved_password') ?? '';
     });
-  
-    // Simulasi loading 1.5 detik seolah-olah menghubungi server
-    await Future.delayed(const Duration(milliseconds: 1500));
-  
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
-  
-      // Navigasi pindah ke halaman Setup Kepribadian
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const PersonalitySetupScreen()),
+  }
+
+  // Fungsi untuk menyimpan email & password jika login/register sukses
+  Future<void> _saveCredentials(String email, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_email', email);
+    await prefs.setString('saved_password', password);
+  }
+
+  // Fungsi Autentikasi Asli (Firebase)
+  void _authenticate() async {
+    // Validasi input kosong
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email dan Password tidak boleh kosong!')),
       );
+      return;
+    }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    String? errorMessage;
+
+    if (isLogin) {
+      // Eksekusi Login
+      errorMessage = await authProvider.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+    } else {
+      // Eksekusi Register
+      if (_nameController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nama lengkap harus diisi!')),
+        );
+        return;
+      }
+      errorMessage = await authProvider.register(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _nameController.text.trim(),
+      );
+    }
+
+    // Cek Hasil
+    if (errorMessage == null) {
+      // SUKSES! Simpan kredensial agar tidak perlu ngetik lagi besok
+      await _saveCredentials(_emailController.text.trim(), _passwordController.text.trim());
+      
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PersonalitySetupScreen()),
+        );
+      }
+    } else {
+      // GAGAL! Tampilkan pesan error dari Firebase
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Pantau status loading dari AuthProvider
+    final isLoading = Provider.of<AuthProvider>(context).isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -51,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 20),
               // --- HEADER ---
-              Text(
+              const Text(
                 "IDENTIS",
                 style: TextStyle(
                   fontSize: 24,
@@ -83,7 +153,6 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 40),
 
               // --- FORM INPUT ---
-              // Kolom Nama (Hanya muncul jika mode Register)
               AnimatedSize(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
@@ -93,27 +162,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: _buildTextField(
                           label: "Nama Lengkap",
                           icon: Icons.person_outline,
+                          controller: _nameController,
                         ),
                       )
                     : const SizedBox.shrink(),
               ),
 
-              // Kolom Email
               _buildTextField(
                 label: "Alamat Email",
                 icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
+                controller: _emailController,
               ),
               const SizedBox(height: 16),
 
-              // Kolom Password
               _buildTextField(
                 label: "Kata Sandi",
                 icon: Icons.lock_outline,
                 isPassword: true,
+                controller: _passwordController,
               ),
               
-              // Lupa Kata Sandi (Hanya di mode Login)
               if (isLogin)
                 Align(
                   alignment: Alignment.centerRight,
@@ -135,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: isLoading ? null : _dummyAuthenticate,
+                  onPressed: isLoading ? null : _authenticate,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
@@ -187,8 +256,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 56,
                 child: OutlinedButton.icon(
-                  onPressed: isLoading ? null : _dummyAuthenticate,
-                  icon: const Icon(Icons.g_mobiledata, size: 32, color: AppColors.textPrimary), // Ikon dummy Google
+                  onPressed: isLoading ? null : () {
+                    // Google SignIn bisa diimplementasikan nanti jika ada waktu
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Login Google menyusul!')),
+                    );
+                  },
+                  icon: const Icon(Icons.g_mobiledata, size: 32, color: AppColors.textPrimary),
                   label: const Text(
                     "Lanjutkan dengan Google",
                     style: TextStyle(
@@ -220,6 +294,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: () {
                       setState(() {
                         isLogin = !isLogin;
+                        // Bersihkan field saat pindah mode (opsional)
+                        if(!isLogin) _nameController.clear(); 
                       });
                     },
                     child: Text(
@@ -239,12 +315,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Widget custom untuk Input Field agar seragam dan elegan
+  // Modifikasi Widget TextField untuk menerima Controller
   Widget _buildTextField({
     required String label,
     required IconData icon,
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
+    required TextEditingController controller,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -259,6 +336,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
       child: TextField(
+        controller: controller, // PENTING: Sambungkan controller di sini
         obscureText: isPassword && !isPasswordVisible,
         keyboardType: keyboardType,
         decoration: InputDecoration(
@@ -280,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen> {
               : null,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none, // Hilangkan border bawaan
+            borderSide: BorderSide.none,
           ),
           filled: true,
           fillColor: Colors.white,

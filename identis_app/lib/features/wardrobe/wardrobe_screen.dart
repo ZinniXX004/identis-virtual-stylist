@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme.dart';
+import 'wardrobe_provider.dart';
 
 class WardrobeScreen extends StatefulWidget {
   const WardrobeScreen({super.key});
@@ -62,6 +65,15 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       "material": "Canvas & Leather", "brand": "Nike", "wearCount": 30, "lastWorn": "Hari ini"
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Tarik data lemari pengguna dari Firestore
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<WardrobeProvider>(context, listen: false).fetchWardrobe();
+    });
+  }
 
   // --- 3. FUNGSI BOTTOM SHEET FILTER ADVANCE ---
   void _showAdvancedFilter() {
@@ -187,8 +199,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Image.network(
-                    item["imageUrl"],
+                  child: Image.file(
+                    File(item["localImagePath"]),
                     width: double.infinity,
                     height: 280,
                     fit: BoxFit.cover,
@@ -462,8 +474,12 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Logika Filter Gabungan (Kategori + Warna + Status)
-    final filteredClothes = userClothes.where((cloth) {
+    // 1. Ambil data asli dari Provider
+    final wardrobeProvider = Provider.of<WardrobeProvider>(context);
+    final userClothesFromProvider = wardrobeProvider.clothes;
+
+    // 2. Logika Filter Gabungan (Kategori + Warna + Status)
+    final filteredClothes = userClothesFromProvider.where((cloth) {
       final matchCategory = selectedCategory == "Semua" || cloth["type"] == selectedCategory;
       final matchColor = selectedColors.isEmpty || selectedColors.contains(cloth["colorName"]);
       final matchUsage = selectedUsages.isEmpty || selectedUsages.contains(cloth["usage"]);
@@ -560,8 +576,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                   children: [
                                     ClipRRect(
                                       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                      child: Image.network(
-                                        item["imageUrl"], 
+                                      child: Image.file(
+                                        File(item["localImagePath"]), 
                                         width: double.infinity, height: double.infinity, fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey.shade200, child: const Center(child: Icon(Icons.image_not_supported))),
                                       ),

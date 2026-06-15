@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import 'physical_setup_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PersonalitySetupScreen extends StatefulWidget {
   const PersonalitySetupScreen({super.key});
@@ -54,6 +55,9 @@ class _PersonalitySetupScreenState extends State<PersonalitySetupScreen> {
               ),
               const SizedBox(height: 16),
               
+              // --- TAMBAHAN: INFO BELUM TAHU MBTI ---
+              
+              
               GridView.builder(
                 shrinkWrap: true, // Penting agar GridView bisa di dalam SingleChildScrollView
                 physics: const NeverScrollableScrollPhysics(),
@@ -100,7 +104,46 @@ class _PersonalitySetupScreenState extends State<PersonalitySetupScreen> {
                 },
               ),
               
-              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        "Belum tahu tipe MBTI kamu?",
+                        style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Link menuju tes 16personalities
+                        final Uri url = Uri.parse('https://www.16personalities.com/id/tipe-kepribadian');
+                        if (!await launchUrl(url)) {
+                          if(context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Gagal membuka browser')),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                      child: const Text("Tes di Sini"),
+                    ),
+                  ],
+                ),
+              ),
+              
               const Divider(),
               const SizedBox(height: 24),
 
@@ -151,6 +194,46 @@ class _PersonalitySetupScreenState extends State<PersonalitySetupScreen> {
                 );
               }).toList(),
 
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        "Belum tahu skor Big Five kamu?",
+                        style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Link menuju tes 16personalities
+                        final Uri url = Uri.parse('https://bigfive.catalyte.io/id');
+                        if (!await launchUrl(url)) {
+                          if(context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Gagal membuka browser')),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                      child: const Text("Tes di Sini"),
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 32),
 
               // --- TOMBOL LANJUT ---
@@ -164,7 +247,10 @@ class _PersonalitySetupScreenState extends State<PersonalitySetupScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const PhysicalSetupScreen(),
+                              builder: (context) => PhysicalSetupScreen(
+                                mbti: selectedMbti!,
+                                bigFive: bigFiveScores,
+                              ),
                             ),
                           );
                           print("MBTI: $selectedMbti");

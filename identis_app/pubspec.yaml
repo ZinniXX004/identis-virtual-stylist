@@ -35,6 +35,17 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   video_player: ^2.8.2
+  firebase_core: ^4.0.0
+  firebase_auth: ^6.5.2
+  provider: ^6.1.5+1
+  shared_preferences: ^2.5.5
+  cloud_firestore: ^6.5.0
+  url_launcher: ^6.3.2
+  image_picker: ^1.2.2
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  google_generative_ai: ^0.4.7
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +74,8 @@ flutter:
     - assets/videos/slide1.mp4
     - assets/videos/slide2.mp4
     - assets/videos/slide3.mp4
+    - .env
+    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

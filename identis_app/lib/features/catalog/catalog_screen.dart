@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import 'package:provider/provider.dart';
+import 'catalog_provider.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -10,7 +12,13 @@ class CatalogScreen extends StatefulWidget {
 
 class _CatalogScreenState extends State<CatalogScreen> {
   // --- 1. STATE FILTER UTAMA ---
-  final List<String> categories = ["Semua", "Atasan", "Bawahan", "Outer", "Aksesoris"];
+  final List<String> categories = [
+  "Semua",
+  "Inner",
+  "Celana",
+  "Sepatu",
+  "Outer",
+];
   String selectedCategory = "Semua";
   
   // State untuk Filter Harga & Warna
@@ -24,19 +32,55 @@ class _CatalogScreenState extends State<CatalogScreen> {
     {"name": "Abu-abu", "color": Colors.grey},
   ];
 
-  // --- 2. DUMMY DATA LENGKAP (Ada Angka Harga & Warna Asli) ---
-  final List<Map<String, dynamic>> partnerProducts = [
-    {"name": "Oversized Blazer", "brand": "Brand Nike x Uniqlo", "priceStr": "Rp 499.000", "price": 499000, "match": "98% Match (Tipe Tubuhmu)", "category": "Outer", "colorName": "Hitam"},
-    {"name": "Slim Fit Chino Pants", "brand": "ZARA Man", "priceStr": "Rp 599.000", "price": 599000, "match": "95% Match (Undertone Warm)", "category": "Bawahan", "colorName": "Krem"},
-    {"name": "Classic Denim Jacket", "brand": "Levi's", "priceStr": "Rp 899.000", "price": 899000, "match": "92% Match (MBTI Cocok)", "category": "Outer", "colorName": "Biru"},
-    {"name": "Linen Casual Shirt", "brand": "H&M Premium", "priceStr": "Rp 349.000", "price": 349000, "match": "96% Match (Smart Casual)", "category": "Atasan", "colorName": "Putih"},
-    {"name": "Pleated Midi Skirt", "brand": "Uniqlo", "priceStr": "Rp 399.000", "price": 399000, "match": "90% Match (Vibe Feminin)", "category": "Bawahan", "colorName": "Hitam"},
-    {"name": "Minimalist Watch", "brand": "Daniel Wellington", "priceStr": "Rp 1.299.000", "price": 1299000, "match": "88% Match (Aksesoris)", "category": "Aksesoris", "colorName": "Abu-abu"},
-  ];
+  Widget _buildProductImage(String imagePath) {
+  if (imagePath.startsWith('http')) {
+    return Image.network(
+      imagePath,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
 
-  // --- 3. FUNGSI MEMUNCULKAN MODAL FILTER ADVANCE ---
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+      errorBuilder: (_, __, ___) {
+        return Container(
+          color: Colors.grey.shade100,
+          child: const Center(
+            child: Icon(
+              Icons.broken_image,
+              size: 40,
+              color: Colors.grey,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  return Image.asset(
+    imagePath,
+    width: double.infinity,
+    fit: BoxFit.cover,
+    errorBuilder: (_, __, ___) {
+      return Container(
+        color: Colors.grey.shade100,
+        child: const Center(
+          child: Icon(
+            Icons.broken_image,
+            size: 40,
+            color: Colors.grey,
+          ),
+        )
+      );
+    },
+  );
+}
+
+  // --- 4. FUNGSI MEMUNCULKAN MODAL FILTER ADVANCE ---
   void _showAdvancedFilter() {
-    // Menyimpan state sementara di dalam modal sebelum di-Apply
     RangeValues tempPriceRange = currentPriceRange;
     List<String> tempColors = List.from(selectedColors);
 
@@ -46,7 +90,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
-        return StatefulBuilder( // Agar modal bisa update UI-nya sendiri (geser slider)
+        return StatefulBuilder( 
           builder: (context, setModalState) {
             return Padding(
               padding: const EdgeInsets.all(24.0),
@@ -54,7 +98,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Handle Bar
                   Center(
                     child: Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
                   ),
@@ -62,7 +105,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   const Text("Filter Produk", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                   const SizedBox(height: 24),
 
-                  // FILTER RENTANG HARGA
                   const Text("Rentang Harga", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                   const SizedBox(height: 16),
                   Row(
@@ -85,7 +127,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // FILTER WARNA
                   const Text("Pilih Warna", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                   const SizedBox(height: 16),
                   Wrap(
@@ -130,7 +171,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // TOMBOL TERAPKAN
                   Row(
                     children: [
                       Expanded(
@@ -149,7 +189,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            // Terapkan ke state utama lalu tutup modal
                             setState(() {
                               currentPriceRange = tempPriceRange;
                               selectedColors = List.from(tempColors);
@@ -162,7 +201,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16), // SafeArea padding bawah
+                  const SizedBox(height: 16), 
                 ],
               ),
             );
@@ -174,16 +213,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // --- 4. LOGIKA FILTERING GABUNGAN (Kategori + Harga + Warna) ---
-    final filteredProducts = partnerProducts.where((product) {
+    final catalogProvider = Provider.of<CatalogProvider>(context);
+    
+    // --- LOGIKA FILTERING ---
+    final filteredProducts = catalogProvider.partnerProducts.where((product) {
       final matchCategory = selectedCategory == "Semua" || product["category"] == selectedCategory;
       final matchPrice = product["price"] >= currentPriceRange.start && product["price"] <= currentPriceRange.end;
       final matchColor = selectedColors.isEmpty || selectedColors.contains(product["colorName"]);
-      
       return matchCategory && matchPrice && matchColor;
     }).toList();
 
-    // Cek apakah filter warna/harga sedang aktif
     final isAdvancedFilterActive = selectedColors.isNotEmpty || currentPriceRange.start > 0 || currentPriceRange.end < 1500000;
 
     return Scaffold(
@@ -194,7 +233,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner AI (Dibuat ringkas agar hemat tempat)
           Container(
             margin: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             padding: const EdgeInsets.all(12),
@@ -208,12 +246,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ),
           ),
 
-          // --- BARIS KATEGORI & TOMBOL FILTER ADVANCE ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
-                // Horizontal Chips
                 Expanded(
                   child: SizedBox(
                     height: 40,
@@ -239,7 +275,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                   ),
                 ),
-                // Tombol Filter Advance
                 const SizedBox(width: 8),
                 Container(
                   decoration: BoxDecoration(
@@ -257,7 +292,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 16),
           
-          // --- GRID PRODUK TER-FILTER ---
           Expanded(
             child: filteredProducts.isEmpty
                 ? const Center(
@@ -276,49 +310,65 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
-                      childAspectRatio: 0.68,
+                      childAspectRatio: 0.58, // Sedikit dipanjangkan agar gambar lebih lega
                     ),
                     itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
                       final product = filteredProducts[index];
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
-                          border: Border.all(color: AppColors.secondary.withOpacity(0.1)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Container(
-                                width: double.infinity,
-                                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: const BorderRadius.vertical(top: Radius.circular(15))),
-                                child: const Icon(Icons.checkroom, size: 48, color: AppColors.secondary),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(product["match"], style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 4),
-                                  Text(product["name"], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  Text(product["brand"], style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(product["priceStr"], style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primary)),
-                                      const Icon(Icons.shopping_bag_outlined, size: 18, color: AppColors.primary),
-                                    ],
+                      // BUNGKUS DENGAN INKWELL AGAR KARTUNYA BISA DIKLIK
+                      return InkWell(
+                        onTap: () => catalogProvider.launchAffiliateURL(product['affiliateUrl']),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+                            border: Border.all(color: AppColors.secondary.withOpacity(0.1)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // BAGIAN GAMBAR PRODUK
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                                  child: _buildProductImage(
+                                    product['imageUrl'] ?? '',
                                   ),
-                                ],
+                                ),
                               ),
-                            )
-                          ],
+                              // BAGIAN INFO TEKS PRODUK
+                              Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(product["match"], style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    Text(product["name"], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    Text(product["brand"], style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(product["priceStr"], style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primary)),
+                                        // Tombol keranjang agar terlihat lebih persuasif untuk di-klik
+                                        Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.shopping_cart_outlined, size: 16, color: AppColors.primary),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              )
+                            ],
+                          ),
                         ),
                       );
                     },

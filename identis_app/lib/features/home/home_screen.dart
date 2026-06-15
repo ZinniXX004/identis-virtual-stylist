@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme.dart';
+import 'home_provider.dart';
+import '../wardrobe/wardrobe_provider.dart';
+import '../catalog/catalog_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,267 +16,267 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Controller untuk input warna/tema
   final TextEditingController _promptController = TextEditingController();
-  
-  // Status Animasi "Slot Machine"
+
+  // State untuk Mesin Slot & Tampilan Gambar
   bool _isAnimating = false;
+  Timer? _shuffleTimer;
+  
+  String? displayedTopi;
+  String? displayedOuter;
+  String? displayedInner;
+  String? displayedCelana;
+  String? displayedSepatu;
 
-  // --- DUMMY DATA ---
-  // List Atasan (Gabungan Kaos, Kemeja, dan Dress)
-  final List<Map<String, dynamic>> tops = [
-    {"name": "Kaos Putih Polos", "icon": Icons.checkroom, "type": "top", "color": Colors.white},
-    {"name": "Kemeja Flanel", "icon": Icons.iron, "type": "top", "color": Colors.redAccent},
-    {"name": "Hoodie Hitam", "icon": Icons.dry_cleaning, "type": "top", "color": Colors.black87},
-    {"name": "Gaun Malam (One-Piece)", "icon": Icons.accessibility_new, "type": "dress", "color": Colors.purple}, // Ini dress
-    {"name": "Jaket Denim", "icon": Icons.snowing, "type": "top", "color": Colors.blue},
-  ];
+  // Fungsi untuk mengekstrak path gambar berdasarkan kategori untuk keperluan animasi
+  List<String> _getAvailablePaths(List<Map<String, dynamic>> wardrobe, List<Map<String, dynamic>> catalog, List<String> targetCategories) {
+    List<String> paths = [];
+    for (var item in wardrobe) {
+      if (targetCategories.any((cat) => (item['type'] ?? '').toString().toLowerCase().contains(cat.toLowerCase()))) {
+        if (item['localImagePath'] != null) paths.add(item['localImagePath']);
+      }
+    }
+    for (var item in catalog) {
+      if (targetCategories.any((cat) => (item['category'] ?? '').toString().toLowerCase().contains(cat.toLowerCase()))) {
+        if (item['imageUrl'] != null) paths.add(item['imageUrl']);
+      }
+    }
+    return paths;
+  }
 
-  // List Bawahan (Celana, Rok)
-  final List<Map<String, dynamic>> bottoms = [
-    {"name": "Jeans Biru Klasik", "icon": Icons.airline_seat_legroom_extra, "color": Colors.blue.shade800},
-    {"name": "Celana Chino Cream", "icon": Icons.airline_seat_legroom_normal, "color": Colors.brown.shade200},
-    {"name": "Rok Hitam Pendek", "icon": Icons.curtains, "color": Colors.black},
-    {"name": "Celana Training", "icon": Icons.directions_run, "color": Colors.grey},
-  ];
+  Future<void> _triggerAI() async {
+    FocusScope.of(context).unfocus();
+    if (_promptController.text.isEmpty) return;
 
-  // Index baju yang sedang tampil
-  int currentTopIndex = 0;
-  int currentBottomIndex = 0;
+    final wardrobeData = context.read<WardrobeProvider>().clothes;
+    final catalogData = context.read<CatalogProvider>().partnerProducts;
 
-  // Logika Cerdas: Cek apakah atasan saat ini adalah dress (terusan)
-  bool get isDressSelected => tops[currentTopIndex]["type"] == "dress";
+    // Kumpulkan semua path gambar untuk diacak di mesin slot
+    final allTopi = _getAvailablePaths(wardrobeData, catalogData, ['Topi', 'Aksesoris', 'Kupluk', 'Beanie']);
+    final allOuter = _getAvailablePaths(wardrobeData, catalogData, ['Outer', 'Jaket', 'Blazer']);
+    final allInner = _getAvailablePaths(wardrobeData, catalogData, ['Inner', 'Atasan', 'Kaos', 'Kemeja']);
+    final allCelana = _getAvailablePaths(wardrobeData, catalogData, ['Bawahan', 'Celana', 'Rok']);
+    final allSepatu = _getAvailablePaths(wardrobeData, catalogData, ['Sepatu', 'Sneakers']);
 
-  // Fungsi Animasi Mesin Slot (Acak Cepat)
-  void _triggerAIRecommendation() {
-    // Tutup keyboard jika terbuka
-    FocusScope.of(context).unfocus(); 
-    
     setState(() {
       _isAnimating = true;
     });
 
-    int ticks = 0;
-    // Mengacak gambar setiap 100 milidetik
-    Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    // 1. Mulai Animasi Mesin Slot
+    _shuffleTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       setState(() {
-        currentTopIndex = Random().nextInt(tops.length);
-        currentBottomIndex = Random().nextInt(bottoms.length);
+        if (allTopi.isNotEmpty) displayedTopi = allTopi[Random().nextInt(allTopi.length)];
+        if (allOuter.isNotEmpty) displayedOuter = allOuter[Random().nextInt(allOuter.length)];
+        if (allInner.isNotEmpty) displayedInner = allInner[Random().nextInt(allInner.length)];
+        if (allCelana.isNotEmpty) displayedCelana = allCelana[Random().nextInt(allCelana.length)];
+        if (allSepatu.isNotEmpty) displayedSepatu = allSepatu[Random().nextInt(allSepatu.length)];
       });
-
-      ticks++;
-      // Berhenti setelah 20 putaran (2 detik)
-      if (ticks >= 20) {
-        timer.cancel();
-        setState(() {
-          _isAnimating = false;
-          // Di sini Anda bisa men-set ke indeks tertentu jika ingin hasil yang spesifik,
-          // Tapi untuk MVP, berhenti di angka acak terakhir sudah terlihat sangat meyakinkan!
-        });
-      }
     });
+
+    try {
+      // 2. Panggil AI & Paksa minimal 2 detik animasi berjalan
+      await Future.wait([
+        context.read<HomeProvider>().generateOutfit(_promptController.text, wardrobeData, catalogData),
+        Future.delayed(const Duration(seconds: 2)),
+      ]);
+
+      // 3. Ambil Hasil
+      final outfit = context.read<HomeProvider>().currentOutfit;
+
+      setState(() {
+        displayedTopi = (outfit['topi'] == "null" || outfit['topi'] == null) ? null : outfit['topi'];
+        displayedOuter = (outfit['outer'] == "null" || outfit['outer'] == null) ? null : outfit['outer'];
+        displayedInner = (outfit['inner'] == "null" || outfit['inner'] == null) ? null : outfit['inner'];
+        displayedCelana = (outfit['celana'] == "null" || outfit['celana'] == null) ? null : outfit['celana'];
+        displayedSepatu = (outfit['sepatu'] == "null" || outfit['sepatu'] == null) ? null : outfit['sepatu'];
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      _shuffleTimer?.cancel();
+      setState(() {
+        _isAnimating = false;
+      });
+    }
   }
 
-  // Fungsi Geser Manual
-  void _changeTop(int direction) {
-    if (_isAnimating) return;
-    setState(() {
-      currentTopIndex = (currentTopIndex + direction) % tops.length;
-      if (currentTopIndex < 0) currentTopIndex = tops.length - 1;
-    });
-  }
-
-  void _changeBottom(int direction) {
-    if (_isAnimating || isDressSelected) return;
-    setState(() {
-      currentBottomIndex = (currentBottomIndex + direction) % bottoms.length;
-      if (currentBottomIndex < 0) currentBottomIndex = bottoms.length - 1;
-    });
+  @override
+  void dispose() {
+    _shuffleTimer?.cancel();
+    _promptController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final homeProvider = context.watch<HomeProvider>();
+    final outfit = homeProvider.currentOutfit;
+
     return SafeArea(
-      child: Column(
-        children: [
-          // --- HEADER & INPUT PROMPT ---
-          Padding(
-            padding: const EdgeInsets.all(24.0),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // --- HEADER IDENTIS ---
                 const Text(
                   "IDENTIS",
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: 2.0, color: AppColors.primary),
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: 2.0, color: AppColors.primary),
                 ),
-                const SizedBox(height: 16),
-                // Input Prompt Warna/Gaya
+                const SizedBox(height: 24),
+
+                // --- INPUT PROMPT & TOMBOL (Dikembalikan ke atas) ---
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                    border: Border.all(color: AppColors.secondary.withOpacity(0.2)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+                  ),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _promptController,
+                        decoration: InputDecoration(
+                          hintText: "Contoh: Baju kasual buat ngampus...",
+                          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          prefixIcon: const Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                        onSubmitted: (_) => _triggerAI(),
+                      ),
+                      const Divider(height: 1),
+                      InkWell(
+                        onTap: _isAnimating ? null : _triggerAI,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                          ),
+                          child: Center(
+                            child: _isAnimating
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : const Text("Generate Mix & Match", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      )
                     ],
                   ),
-                  child: TextField(
-                    controller: _promptController,
-                    decoration: InputDecoration(
-                      hintText: "Contoh: Baju warna cerah buat nongkrong...",
-                      hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-                      prefixIcon: const Icon(Icons.auto_awesome, color: AppColors.accent),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.send, color: AppColors.primary),
-                        onPressed: _triggerAIRecommendation,
-                      ),
+                ),
+                const SizedBox(height: 32),
+
+                // --- CANVAS MIX & MATCH ---
+                Center(
+                  child: Container(
+                    height: 440,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppColors.secondary.withOpacity(0.1)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))],
                     ),
-                    onSubmitted: (_) => _triggerAIRecommendation(),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          top: 65,
+                          child: _buildClothingItem(width: 250, height: 190, label: "Outer", imagePath: displayedOuter),
+                        ),
+                        Positioned(
+                          top: 65,
+                          child: _buildClothingItem(width: 120, height: 160, label: "Inner", imagePath: displayedInner),
+                        ),
+                        Positioned(
+                          top: 225,
+                          child: _buildClothingItem(width: 100, height: 140, label: "Celana", imagePath: displayedCelana),
+                        ),
+                        Positioned(
+                          top: 10,
+                          child: _buildClothingItem(width: 70, height: 70, label: "Topi", imagePath: displayedTopi, isCircle: true),
+                        ),
+                        Positioned(
+                          top: 360,
+                          child: _buildClothingItem(width: 80, height: 60, label: "Sepatu", imagePath: displayedSepatu),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                const SizedBox(height: 32),
+
+                // --- KARTU ANALISIS AI ---
+                if (!_isAnimating && outfit.containsKey('analisis') && outfit['analisis'] != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.psychology, color: AppColors.primary, size: 18),
+                            SizedBox(width: 8),
+                            Text("Analisis Stylist AI", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          outfit['analisis'],
+                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 24),
               ],
             ),
           ),
-
-          // --- AREA MIXER (KARTU PAKAIAN) ---
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  
-                  // 1. SLIDER ATASAN
-                  _buildSliderItem(
-                    title: "Atasan",
-                    itemData: tops[currentTopIndex],
-                    onLeftTap: () => _changeTop(-1),
-                    onRightTap: () => _changeTop(1),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // 2. SLIDER BAWAHAN (Akan memudar jika Dress terpilih)
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 300),
-                    opacity: isDressSelected ? 0.3 : 1.0, // Gelapkan jika dress
-                    child: _buildSliderItem(
-                      title: "Bawahan",
-                      itemData: bottoms[currentBottomIndex],
-                      onLeftTap: () => _changeBottom(-1),
-                      onRightTap: () => _changeBottom(1),
-                      isDisabled: isDressSelected,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // --- TOMBOL AI GENERATE BESAR ---
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: _isAnimating ? null : _triggerAIRecommendation,
-                icon: _isAnimating 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.shuffle, color: Colors.white),
-                label: Text(
-                  _isAnimating ? "Mencari Kombinasi..." : "AI Recommend Outfit",
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 5,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // Widget Pembantu untuk membuat Baris Slider Kanan-Kiri
-  Widget _buildSliderItem({
-    required String title,
-    required Map<String, dynamic> itemData,
-    required VoidCallback onLeftTap,
-    required VoidCallback onRightTap,
-    bool isDisabled = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Panah Kiri
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new),
-              color: isDisabled ? Colors.grey : AppColors.primary,
-              onPressed: onLeftTap,
-            ),
+  // WIDGET BANTUAN YANG CERDAS (Bisa baca File Local HP & Local Asset laptop)
+  Widget _buildClothingItem({required double width, required double height, required String label, String? imagePath, bool isCircle = false}) {
+    final bool hasImage = imagePath != null && imagePath.isNotEmpty && imagePath != "null";
+    
+    // Deteksi apakah path-nya dari folder assets di kode Flutter
+    final bool isAsset = hasImage && imagePath.startsWith('assets/');
 
-            // Kartu Baju di Tengah (Dengan AnimatedSwitcher agar pergantiannya mulus)
-            Expanded(
-              child: Container(
-                height: 180,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: itemData["color"].withOpacity(0.5), width: 2),
-                  boxShadow: [
-                    BoxShadow(color: itemData["color"].withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5))
-                  ],
-                ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 150),
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    return ScaleTransition(scale: animation, child: child);
-                  },
-                  // Key penting agar flutter tahu isinya berubah
-                  child: Column(
-                    key: ValueKey<String>(itemData["name"]), 
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(itemData["icon"], size: 80, color: itemData["color"]),
-                      const SizedBox(height: 12),
-                      Text(
-                        itemData["name"],
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (isDisabled)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 4.0),
-                          child: Text("(Dinonaktifkan: Pakai Dress)", style: TextStyle(color: Colors.red, fontSize: 12)),
-                        )
-                    ],
-                  ),
-                ),
-              ),
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+        borderRadius: isCircle ? null : BorderRadius.circular(12),
+        border: Border.all(color: AppColors.secondary.withOpacity(0.15), width: 1.5),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4))],
+      ),
+      child: !hasImage
+          ? Center(
+              child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 11, letterSpacing: 1.0)),
+            )
+          : ClipRRect(
+              borderRadius: isCircle ? BorderRadius.circular(width / 2) : BorderRadius.circular(10),
+              child: isAsset 
+                  ? Image.asset(imagePath, fit: BoxFit.cover) // Render gambar dummy dari laptop
+                  : Image.file(File(imagePath), fit: BoxFit.cover), // Render gambar lemari dari memori HP
             ),
-
-            // Panah Kanan
-            IconButton(
-              icon: const Icon(Icons.arrow_forward_ios),
-              color: isDisabled ? Colors.grey : AppColors.primary,
-              onPressed: onRightTap,
-            ),
-          ],
-        ),
-      ],
     );
   }
 }
