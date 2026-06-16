@@ -13,33 +13,36 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  
+
   // List untuk menyimpan 3 controller video
   late List<VideoPlayerController> _videoControllers;
 
   // Data onboarding ditambahkan path video-nya
   final List<Map<String, dynamic>> onboardingData = [
     {
-      "video": "assets/videos/slide1.mp4",
-      "title": "Kenali Gayamu!",
-      "text": "Temukan rekomendasi fashion terbaik yang disesuaikan dengan kepribadian MBTI kamu."
+      "title": "Fashion yang Mengenal Dirimu",
+      "text":
+          "Rekomendasi outfit yang dipersonalisasi berdasarkan MBTI, Big Five, bentuk tubuh, dan tone kulitmu.",
+      "video": "assets/videos/slide1.mp4", // <-- TAMBAHKAN INI
     },
     {
-      "video": "assets/videos/slide2.mp4",
-      "title": "Lemari Digital Cerdas",
-      "text": "Simpan, atur, dan lihat semua koleksi pakaianmu dalam satu genggaman."
+      "title": "Lemari Digital Berbasis AI",
+      "text":
+          "Scan pakaianmu dengan kamera AI dan simpan seluruh koleksi dalam lemari digital yang rapi.",
+      "video": "assets/videos/slide2.mp4", // <-- TAMBAHKAN INI
     },
     {
-      "video": "assets/videos/slide3.mp4",
-      "title": "Tampil Percaya Diri",
-      "text": "Biar AI kami yang bantu kamu mix & match outfit setiap hari. Siap untuk mulai?"
+      "title": "Mix & Match dalam Sekejap",
+      "text":
+          "Biarkan AI menggabungkan koleksi pribadimu dan katalog fashion online untuk menciptakan outfit terbaik.",
+      "video": "assets/videos/slide3.mp4", // <-- TAMBAHKAN INI
     },
   ];
 
   @override
   void initState() {
     super.initState();
-    
+
     // Inisialisasi ketiga video sekaligus agar transisinya mulus tanpa loading
     _videoControllers = onboardingData.map((data) {
       return VideoPlayerController.asset(data["video"])
@@ -77,7 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               // Logika Pintar: Pause video sebelumnya, Play video yang baru
               _videoControllers[_currentPage].pause();
               _videoControllers[value].play();
-              
+
               setState(() {
                 _currentPage = value;
               });
@@ -98,7 +101,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                     )
                   else
-                    const Center(child: CircularProgressIndicator(color: Colors.white)),
+                    const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
 
                   // --- Gradient Overlay Hitam ---
                   Container(
@@ -142,7 +147,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 180), // Memberi ruang untuk tombol di bawah
+                          const SizedBox(
+                            height: 180,
+                          ), // Memberi ruang untuk tombol di bawah
                         ],
                       ),
                     ),
@@ -186,7 +193,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             // Navigasi menimpa halaman agar tidak bisa di-back
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              MaterialPageRoute(
+                                builder: (context) => const LoginScreen(),
+                              ),
                             );
                           } else {
                             _pageController.nextPage(
@@ -196,10 +205,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           }
                         },
                         child: Text(
-                          _currentPage == onboardingData.length - 1 
-                              ? "Mulai Sekarang" 
+                          _currentPage == onboardingData.length - 1
+                              ? "Mulai Sekarang"
                               : "Selanjutnya",
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),

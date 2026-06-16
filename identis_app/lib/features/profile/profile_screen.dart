@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme.dart';
+import '../auth/auth_provider.dart';
+import '../auth/login_screen.dart'; // Pastikan path ini sesuai dengan letak file login Anda
 
 // ==========================================
 // 1. HALAMAN PROFIL UTAMA
@@ -12,49 +15,63 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // State Profil User
-  String userName = "Devon";
-  String bio = "Mahasiswa ITS | Pecinta gaya kasual & techwear";
-  
-  // Fungsi navigasi ke halaman Edit Profil (Flow ala IG)
-  void _navigateToEditProfile() async {
-    final result = await Navigator.push(
+
+  // Fungsi navigasi ke halaman Edit Profil
+  // Kita passing data asli dari Firebase yang sedang aktif ke halaman Edit
+  void _navigateToEditProfile(String currentName, String currentBio) {
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditProfileScreen(
-          initialName: userName,
-          initialBio: bio,
+          initialName: currentName, 
+          initialBio: currentBio,
         ),
       ),
     );
-
-    if (result != null) {
-      setState(() {
-        userName = result['name'];
-        bio = result['bio'];
-      });
-    }
   }
 
   // Fungsi Logout
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Keluar Akun?"),
         content: const Text("Apakah kamu yakin ingin keluar dari aplikasi IDENTIS?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text("Batal", style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil Keluar (Simulasi)")));
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogContext); // Tutup dialog
+              try {
+                // Eksekusi logout di backend
+                await context.read<AuthProvider>().logout();
+                if (!mounted) return;
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Berhasil keluar dari akun")),
+                );
+
+                // Hapus semua history layar dan lempar ke LoginScreen
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Gagal logout: $e")),
+                );
+              }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             child: const Text("Keluar", style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -64,8 +81,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 1. BACA DATA DARI DATABASE (PROVIDER)
+    // context.watch akan membuat UI otomatis update kalau data di Provider berubah (misal habis diedit)
+    final authProvider = context.watch<AuthProvider>();
+    final userData = authProvider.userData ?? {};
+
+    // 2. AMBIL VALUE-NYA (Beri default jika kosong)
+    final userName = userData['name'] ?? 'User IDENTIS';
+    // Karena saat register belum ada form bio, kita beri default teks ini jika kosong:
+    final bio = (userData['bio'] != null && userData['bio'].toString().isNotEmpty) 
+        ? userData['bio'] 
+        : 'Belum ada bio. Tambahkan sekarang!'; 
+        
+    final mbti = userData['mbti'] ?? '-';
+    final undertone = userData['undertone'] ?? '-';
+    final bodyShape = userData['bodyShape'] ?? '-';
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade50, // Latar belakang abu sangat muda agar card menonjol
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text("IDENTIS | Profil", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.0)),
         centerTitle: true,
@@ -77,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            // --- 1. HEADER PROFIL (FOTO DI TENGAH) ---
+            // --- HEADER PROFIL ---
             Container(
               width: double.infinity,
               color: Colors.white,
@@ -85,7 +118,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   Container(
-                    width: 100, height: 100,
+                    width: 100,
+                    height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.grey.shade200, width: 2),
@@ -96,18 +130,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(userName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  // Render Nama Asli
+                  Text(
+                    userName,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
                   const SizedBox(height: 6),
-                  Text(bio, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary), textAlign: TextAlign.center),
-                  
+                  // Render Bio Asli
+                  Text(
+                    bio,
+                    style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 20),
-                  
-                  // Tombol Edit Profil Ala IG
                   SizedBox(
                     width: 200,
                     height: 40,
                     child: OutlinedButton(
-                      onPressed: _navigateToEditProfile,
+                      // Panggil Edit dan bawa data asli saat ini
+                      onPressed: () => _navigateToEditProfile(userName, bio),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
                         side: BorderSide(color: Colors.grey.shade300),
@@ -119,10 +160,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
 
-            // --- 2. KARTU IDENTITAS AI (KEMBALI KE CARD, ELEGAN DEEP BLUE) ---
+            // --- KARTU IDENTITAS AI ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
@@ -135,7 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
-                    BoxShadow(color: Colors.blue.shade900.withOpacity(0.25), blurRadius: 15, offset: const Offset(0, 8))
+                    BoxShadow(color: Colors.blue.shade900.withOpacity(0.25), blurRadius: 15, offset: const Offset(0, 8)),
                   ],
                 ),
                 child: Column(
@@ -156,21 +196,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildAIProfileStat("MBTI", "ENFP"),
+                        _buildAIProfileStat("MBTI", mbti),
                         Container(width: 1, height: 40, color: Colors.white30),
-                        _buildAIProfileStat("Undertone", "Warm"),
+                        _buildAIProfileStat("Undertone", undertone),
                         Container(width: 1, height: 40, color: Colors.white30),
-                        _buildAIProfileStat("Body", "Hourglass"),
+                        _buildAIProfileStat("Body", bodyShape),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
-
             const SizedBox(height: 32),
 
-            // --- 3. MENU PENGATURAN BAWAH (DIKEMBALIKAN KE VERSI AWAL YANG MASUK AKAL) ---
+            // --- MENU PENGATURAN BAWAH ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -178,7 +217,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   const Text("Lainnya", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary)),
                   const SizedBox(height: 12),
-
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -188,23 +226,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       children: [
                         _buildMenuTile(
-                          icon: Icons.help_outline, 
-                          title: "Pusat Bantuan & FAQ", 
-                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Membuka Pusat Bantuan...")))
+                          icon: Icons.help_outline, title: "Pusat Bantuan & FAQ",
+                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Membuka Pusat Bantuan..."))),
                         ),
                         const Divider(height: 1, indent: 56),
                         _buildMenuTile(
-                          icon: Icons.info_outline, 
-                          title: "Tentang IDENTIS", 
-                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("IDENTIS v1.0.0")))
+                          icon: Icons.info_outline, title: "Tentang IDENTIS",
+                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("IDENTIS v1.0.0"))),
                         ),
                       ],
                     ),
                   ),
-                  
                   const SizedBox(height: 24),
-                  
-                  // Tombol Logout Merah
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Container(
@@ -225,7 +258,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget Pembantu untuk Kartu AI
   Widget _buildAIProfileStat(String label, String value) {
     return Column(
       children: [
@@ -236,7 +268,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget Pembantu untuk Menu
   Widget _buildMenuTile({required IconData icon, required String title, required VoidCallback onTap}) {
     return ListTile(
       leading: Icon(icon, color: AppColors.textSecondary),
@@ -247,19 +278,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-
 // ==========================================
-// 2. HALAMAN EDIT PROFIL (ALA INSTAGRAM)
+// 2. HALAMAN EDIT PROFIL
 // ==========================================
 class EditProfileScreen extends StatefulWidget {
   final String initialName;
   final String initialBio;
 
-  const EditProfileScreen({
-    super.key,
-    required this.initialName,
-    required this.initialBio,
-  });
+  const EditProfileScreen({super.key, required this.initialName, required this.initialBio});
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -272,8 +298,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // Set text controller dengan data asli dari parameter
     _nameController = TextEditingController(text: widget.initialName);
-    _bioController = TextEditingController(text: widget.initialBio);
+    // Jika bio isinya teks default dari kita, kosongkan saja formnya agar enak diedit
+    String startingBio = widget.initialBio == 'Belum ada bio. Tambahkan sekarang!' ? '' : widget.initialBio;
+    _bioController = TextEditingController(text: startingBio);
   }
 
   @override
@@ -283,11 +312,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  void _saveProfile() {
-    Navigator.pop(context, {
-      'name': _nameController.text,
-      'bio': _bioController.text,
-    });
+  // Fungsi simpan yang akan menembak ke backend
+  Future<void> _saveProfile() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Menyimpan profil..."), duration: Duration(seconds: 1)),
+    );
+
+    // Panggil updateProfile di auth_provider.dart
+    final errorMessage = await context.read<AuthProvider>().updateProfile(
+      _nameController.text.trim(),
+      _bioController.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (errorMessage == null) {
+      Navigator.pop(context); // Kembali ke profil utama jika sukses
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profil berhasil diperbarui!")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal menyimpan: $errorMessage"), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
@@ -297,10 +345,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: IconButton(icon: const Icon(Icons.close, color: AppColors.textPrimary), onPressed: () => Navigator.pop(context)),
         title: const Text("Edit Profil", style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
         actions: [
           TextButton(
@@ -313,7 +358,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Ganti Foto
             Center(
               child: Column(
                 children: [
@@ -321,10 +365,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     width: 90, height: 90,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: NetworkImage("https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"),
-                        fit: BoxFit.cover,
-                      ),
+                      image: DecorationImage(image: NetworkImage("https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80"), fit: BoxFit.cover),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -333,12 +374,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 32),
-
-            // Form Input
             _buildInputField("Nama", _nameController),
             const SizedBox(height: 20),
             _buildInputField("Bio", _bioController, maxLines: 3),
-            
           ],
         ),
       ),

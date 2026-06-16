@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
 import '../setup/personality_setup_screen.dart';
 import 'auth_provider.dart'; // Pastikan path ini sesuai
+import '../home/main_navigation_screen.dart'; // Pastikan path ini sesuai
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -91,12 +92,20 @@ class _LoginScreenState extends State<LoginScreen> {
       await _saveCredentials(_emailController.text.trim(), _passwordController.text.trim());
       
       if (mounted) {
+        // Cek status setup dari provider sebelum menentukan arah navigasi
+        final isSetupDone = authProvider.isSetupComplete;
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const PersonalitySetupScreen()),
+          MaterialPageRoute(
+            builder: (context) => isSetupDone 
+                ? const MainNavigationScreen() // <-- Jika sudah setup, langsung ke Home
+                : const PersonalitySetupScreen(), // <-- Jika belum, ke layar Setup
+          ),
         );
       }
     } else {
+      // ... blok gagal tetap sama
       // GAGAL! Tampilkan pesan error dari Firebase
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

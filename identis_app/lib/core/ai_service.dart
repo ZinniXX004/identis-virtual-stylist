@@ -12,16 +12,28 @@ class AiService {
 
   Future<Map<String, dynamic>> getOutfitRecommendation({
     required String promptUser,
+    required Map<String, dynamic> userData, // <-- Menerima data user
     required List<Map<String, dynamic>> wardrobe,
     required List<Map<String, dynamic>> catalog,
   }) async {
-    // Kita petakan 'localImagePath' untuk lemari dan 'imageUrl' untuk katalog ke satu variabel 'path'
     final wardrobeList = wardrobe.map((e) => "{'nama': '${e['name']}', 'kategori': '${e['type']}', 'path': '${e['localImagePath'] ?? ''}'}").toList();
     final catalogList = catalog.map((e) => "{'nama': '${e['name']}', 'kategori': '${e['category']}', 'path': '${e['imageUrl'] ?? ''}'}").toList();
 
+    // Ekstrak profil psikologi & fisik
+    final mbti = userData['mbti'] ?? 'Tidak diketahui';
+    final bodyShape = userData['bodyShape'] ?? 'Tidak diketahui';
+    final skinTone = userData['undertone'] ?? 'Tidak diketahui';
+
     final prompt = '''
-    Anda adalah AI Fashion Stylist. Pengguna meminta: "$promptUser".
-    Pilihkan kombinasi pakaian (Topi, Outer, Inner, Celana, Sepatu) dari data berikut. 
+    Anda adalah AI Fashion Stylist IDENTIS. 
+    Pengguna meminta: "$promptUser".
+
+    Profil Pengguna:
+    - Kepribadian (MBTI): $mbti
+    - Bentuk Tubuh: $bodyShape
+    - Undertone Kulit: $skinTone
+
+    Pilihkan kombinasi pakaian (Topi, Outer, Inner, Celana, Sepatu) yang SECARA SPESIFIK cocok dengan profil MBTI dan fisik pengguna di atas.
     Jika di kategori tersebut tidak ada item yang cocok, isi dengan "null".
     
     Lemari (Utamakan ini): $wardrobeList
@@ -34,7 +46,7 @@ class AiService {
       "inner": "path_gambar_atau_null",
       "celana": "path_gambar_atau_null",
       "sepatu": "path_gambar_atau_null",
-      "analisis": "Satu kalimat penjelasan mengapa kombinasi ini cocok."
+      "analisis": "Jelaskan dalam satu kalimat mengapa kombinasi ini cocok dengan MBTI $mbti dan bentuk tubuh $bodyShape pengguna."
     }
     ''';
 
